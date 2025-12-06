@@ -1,28 +1,26 @@
 FROM php:8.1-apache
 
-RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
+# Install dependencies
+RUN apt-get update && apt-get install -y curl unzip libpng-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo_mysql mysqli gd \
+    && a2enmod rewrite
 
-RUN docker-php-ext-install pdo_mysql mysqli gd
-RUN a2enmod rewrite
-
+# Set working directory
 WORKDIR /var/www/html
 
-# Copy project dulu sebelum install node modules
+# Copy all project files
 COPY . .
 
-# Install Tailwind dependencies
-RUN npm install
-RUN npm install -D tailwindcss postcss autoprefixer
+# Download Tailwind Standalone Binary
+RUN curl -sLo /usr/local/bin/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+    && chmod +x /usr/local/bin/tailwindcss
 
 # Build CSS
-RUN npx tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/style.css
-# Hapus --watch karena mode build Docker tidak mendukung watch
-# RUN npm run build-css
+RUN tailwindcss -i ./assets/css/tailwind.css -o ./assets/css/style.css --minify
+
+# Permissions
+RUN chown -R www-data:www-data /var/www/html
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]
